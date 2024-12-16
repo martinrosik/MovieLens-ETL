@@ -1,27 +1,31 @@
-# **ETL proces pre MovieLens Dataset**
 
-Tento repozitár obsahuje implementáciu ETL procesu v Snowflake pre analýzu dát z MovieLens datasetu. Projekt sa sústreďuje na skúmanie správania používateľov a ich preferencií filmov na základe hodnotení a demografických údajov. Výsledný dátový model umožňuje detailnú analýzu a vizualizáciu hlavných metrík.
+# **ETL Proces pre MovieLens Dataset**
+
+Tento repozitár obsahuje implementáciu ETL procesu v Snowflake na analýzu dát z MovieLens datasetu. Projekt sa zameriava na analýzu správania používateľov a ich preferencií filmov na základe hodnotení a demografických údajov. Výsledný dátový model umožňuje detailnú analýzu a vizualizáciu hlavných metrík. 🎥
 
 ---
 ## **1. Úvod a charakteristika zdrojových dát**
-Hlavným cieľom tohto projektu je analyzovať údaje o filmoch, používateľoch a ich hodnoteniach. Takáto analýza odhaľuje trendy vo filmových preferenciách, najobľúbenejšie filmy a správanie rôznych skupín používateľov.
 
-Zdrojové dáta pochádzajú z verejne dostupného datasetu MovieLens. Tento dataset obsahuje päť hlavných tabuliek:
-- `movies`
-- `ratings`
-- `users`
-- `genres`
-- `tags`
+Hlavným cieľom tohto projektu je analyzovať údaje o filmoch, používateľoch a ich hodnoteniach. Táto analýza pomáha odhaliť:
+- Trendy vo filmových preferenciách 🎥.
+- Najobľúbenejšie filmy 🎦.
+- Správanie rôznych skupín používateľov 🔐.
 
-ETL proces bol navrhnutý tak, aby pripravil, transformoval a sprístupnil tieto dáta pre viacdimenzionálnu analýzu.
+**Zdrojové dáta:**
+Dáta pochádzajú z verejne dostupného MovieLens datasetu, ktorý obsahuje päť hlavných tabuliek:
+- `movies` (detaily o filmoch)
+- `ratings` (hodnotenia filmov)
+- `users` (informácie o používateľoch)
+- `genres` (kategórie žánrov)
+- `tags` (dodatočné štítky filmov)
+
+ETL proces bol navrhnutý tak, aby pripravil, transformoval a sprístupnil tieto dáta pre viacdimenzionálnu analýzu 🌐.
 
 ---
 ### **1.1 Architektúra dát**
-ERD schéma
-Dáta sú uložené v relačnom modeli, ktorý je vizualizovaný prostredníctvom entitno-relačného diagramu (ERD).
 
-### **ERD schéma**
-Surové dáta sú usporiadané v relačnom modeli, ktorý je znázornený na **entitno-relačnom diagrame (ERD)**:
+#### **Entitno-relačný diagram (ERD)**
+Zdrojové dáta sú usporiadané v relačnom modeli znázornenom v nasledujúcom ERD diagrame. Tento diagram ukazuje, ako sú jednotlivé tabuľky prepojené.
 
 <p align="center">
   <img src="https://github.com/martinrosik/MovieLens-ETL/blob/master/MovieLens_ERD.png" alt="ERD Schema">
@@ -30,17 +34,19 @@ Surové dáta sú usporiadané v relačnom modeli, ktorý je znázornený na **e
 </p>
 
 ---
-## **2 Dimenzionálny model**
+## **2. Dimenzionálny model**
 
-Navrhnutý **hviezdicový model (star schema)** zahŕňa centrálnu faktovú tabuľku, ktorá uchováva hodnotenia filmov a ich prepojenie na rôzne dimenzie:
+Pre účely analýzy bol navrhnutý **hviezdicový model (star schema)**. Tento model obsahuje centálnu faktovú tabuľku `fact_ratings`, ktorá uchováva hodnotenia filmov, a niekoľko dimenzií:
 
--**`dim_movies`**: Informácie o filmoch (názov, rok vydania, žánre).
--**`dim_users`**: Demografické údaje o používateľoch (vek, pohlavie, lokalita).
--**`dim_date`**: Informácie o dátumoch hodnotení (deň, mesiac, rok, štvrťrok).
--**`dim_genres`**: Kategórie žánrov pre analýzu preferencií.
--**`dim_tags`**: Tags
+- **`dim_movies`**: Informácie o filmoch (názov, rok vydania, žánre). 🎥
+- **`dim_users`**: Demografické údaje o používateľoch (vek, pohlavie, lokalita). 👨‍👩‍👦
+- **`dim_date`**: Informácie o dátumoch hodnotení (deň, mesiac, rok, štvrťrok). 🕧
+- **`dim_genres`**: Kategórie žánrov pre analýzu preferencií. 🎶
+- **`dim_tags`**: Štítky pre filmy a hodnotenia. 🌂
 
-Star Schema
+#### **Star Schema**
+Hviezdicový model zobrazuje jasné vzťahy medzi dimenziami a faktovou tabuľkou:
+
 <p align="center">
   <img src="https://github.com/martinrosik/MovieLens-ETL/blob/master/MovieLens_star-scheme.png" alt="Star Schema">
   <br>
@@ -49,11 +55,12 @@ Star Schema
 
 ---
 ## **3. ETL proces v Snowflake**
-Proces pozostával z troch fáz: Extract, Transform a Load, pričom Snowflake bol využitý ako platforma pre spracovanie dát.
 
----
+ETL proces pozostával z troch hlavných fáz: **Extract, Transform a Load**. Snowflake bol využitý ako robustná platforma pre spracovanie dát ⚡️.
+
 ### **3.1 Extrahovanie dát**
-Dáta z `CSV` súborov boli nahrané do Snowflake pomocou interného stage úložiska:
+
+Dáta boli nahrané z `CSV` súborov do Snowflake pomocou interného **stage** úložiska.
 
 #### Príklad kódu:
 ```sql
@@ -65,65 +72,69 @@ COPY INTO movies_staging
 FROM @movielens_stage/movies.csv
 FILE_FORMAT = (TYPE = 'CSV' SKIP_HEADER = 1);
 ```
-
-Chybné záznamy boli ignorované pomocou parametra `ON_ERROR = 'CONTINUE'`.
+Chybné záznamy boli ignorované pomocou parametra `ON_ERROR = 'CONTINUE'`. 🚫
 
 ---
 ### **3.2 Transformácia dát**
-V tejto fáze boli dáta vyčistené, transformované a pripravené na použitie vo finálnom dátovom modeli.
 
-Dimenzia `dim_users` obsahuje demografické údaje, pričom vek bol rozdelený do kategórií:
+Dáta boli vyčistené, transformované a pripravené na analyzáciu vo finálnom dátovom modeli.
 
-```sql
-CREATE TABLE dim_users AS
-SELECT DISTINCT
-    userId AS dim_userId,
-    CASE 
-        WHEN age < 18 THEN 'Under 18'
-        WHEN age BETWEEN 18 AND 24 THEN '18-24'
-        WHEN age BETWEEN 25 AND 34 THEN '25-34'
-        WHEN age BETWEEN 35 AND 44 THEN '35-44'
-        WHEN age >= 45 THEN '45+'
-        ELSE 'Unknown'
-    END AS age_group,
-    gender,
-    location
-FROM users_staging;
-```
-Dimenzia `dim_date` zabezpečuje podrobné časové údaje, ako sú dni v týždni či štvrťroky:
+#### Transformácie:
+1. **Dimenzia `dim_users`:**
+   Rozdelenie veku používateľov do kategórií:
+   ```sql
+   CREATE TABLE dim_users AS
+   SELECT DISTINCT
+       userId AS dim_userId,
+       CASE
+           WHEN age < 18 THEN 'Under 18'
+           WHEN age BETWEEN 18 AND 24 THEN '18-24'
+           WHEN age BETWEEN 25 AND 34 THEN '25-34'
+           WHEN age BETWEEN 35 AND 44 THEN '35-44'
+           WHEN age >= 45 THEN '45+'
+           ELSE 'Unknown'
+       END AS age_group,
+       gender,
+       location
+   FROM users_staging;
+   ```
 
-```sql
-CREATE TABLE dim_date AS
-SELECT
-    ROW_NUMBER() OVER (ORDER BY CAST(timestamp AS DATE)) AS dim_dateID,
-    CAST(timestamp AS DATE) AS date,
-    DATE_PART(day, timestamp) AS day,
-    DATE_PART(dow, timestamp) AS dayOfWeek,
-    DATE_PART(month, timestamp) AS month,
-    DATE_PART(year, timestamp) AS year,
-    DATE_PART(quarter, timestamp) AS quarter
-FROM ratings_staging;
-```
-Faktová tabuľka `fact_ratings` kombinuje kľúčové metriky:
+2. **Dimenzia `dim_date`:**
+   Extrakcia detailných údajov o časových aspektoch:
+   ```sql
+   CREATE TABLE dim_date AS
+   SELECT
+       ROW_NUMBER() OVER (ORDER BY CAST(timestamp AS DATE)) AS dim_dateID,
+       CAST(timestamp AS DATE) AS date,
+       DATE_PART(day, timestamp) AS day,
+       DATE_PART(dow, timestamp) AS dayOfWeek,
+       DATE_PART(month, timestamp) AS month,
+       DATE_PART(year, timestamp) AS year,
+       DATE_PART(quarter, timestamp) AS quarter
+   FROM ratings_staging;
+   ```
 
-```sql
-CREATE TABLE fact_ratings AS
-SELECT 
-    r.ratingId AS fact_ratingID,
-    r.timestamp AS timestamp,
-    r.rating,
-    d.dim_dateID AS dateID,
-    m.dim_movieId AS movieID,
-    u.dim_userId AS userID
-FROM ratings_staging r
-JOIN dim_date d ON CAST(r.timestamp AS DATE) = d.date
-JOIN dim_movies m ON r.movieId = m.dim_movieId
-JOIN dim_users u ON r.userId = u.dim_userId;
-```
+3. **Faktová tabuľka `fact_ratings`:**
+   Kombinácia hlavných metrík:
+   ```sql
+   CREATE TABLE fact_ratings AS
+   SELECT
+       r.ratingId AS fact_ratingID,
+       r.timestamp AS timestamp,
+       r.rating,
+       d.dim_dateID AS dateID,
+       m.dim_movieId AS movieID,
+       u.dim_userId AS userID
+   FROM ratings_staging r
+   JOIN dim_date d ON CAST(r.timestamp AS DATE) = d.date
+   JOIN dim_movies m ON r.movieId = m.dim_movieId
+   JOIN dim_users u ON r.userId = u.dim_userId;
+   ```
 
 ---
 ### **3.3 Načítanie dát**
-Po úspešnom spracovaní boli staging tabuľky odstránené:
+
+Po úspešnom spracovaní boli staging tabuľky odstránené pre optimalizáciu:
 
 ```sql
 DROP TABLE IF EXISTS movies_staging;
@@ -133,34 +144,46 @@ DROP TABLE IF EXISTS ratings_staging;
 
 ---
 ## **4. Vizualizácia dát**
-Dashboard poskytuje prehľadné vizualizácie kľúčových metrík:
 
-Top 10 hodnotených filmov
-Vizualizácia zobrazuje najčastejšie hodnotené filmy:
+Dashboard poskytuje prehľadné vizualizácie hlavných metrík 🔦:
 
-sql
-Kopírovať kód
-SELECT 
-    m.title AS movie_title,
-    COUNT(f.fact_ratingID) AS total_ratings
-FROM fact_ratings f
-JOIN dim_movies m ON f.movieID = m.dim_movieId
-GROUP BY m.title
-ORDER BY total_ratings DESC
-LIMIT 10;
-Rozdelenie hodnotení podľa pohlavia
-Analýza porovnáva počet hodnotení od mužov a žien.
+1. **Top 10 hodnotených filmov**:
+   Vizualizácia najčastejšie hodnotených filmov:
+   ```sql
+   SELECT
+       m.title AS movie_title,
+       COUNT(f.fact_ratingID) AS total_ratings
+   FROM fact_ratings f
+   JOIN dim_movies m ON f.movieID = m.dim_movieId
+   GROUP BY m.title
+   ORDER BY total_ratings DESC
+   LIMIT 10;
+   ```
 
-Priemerné hodnotenia filmov podľa rokov vydania
-Tento graf odhaľuje trendy v hodnoteniach filmov v rôznych obdobiach.
+2. **Rozdelenie hodnotení podľa pohlavia:**
+   Porovnanie počtu hodnotení od mužov a žen.
 
-Aktivita počas dní v týždni
-Ukazuje, kedy sú používatelia najaktívnejší.
+3. **Priemerné hodnotenia filmov podľa rokov vydania:**
+   Odhalenie trendov v hodnoteniach filmov v rôznych obdobiach.
 
-Najčastejšie hodnotené žánre
-Vizualizácia odhaľuje preferencie používateľov podľa žánrov.
+4. **Aktivita podľa dňí v týždni:**
+   Zobrazenie najaktívnejších časov hodnotenia.
 
-Aktivita podľa vekových skupín
-Graf porovnáva, kedy sú jednotlivé vekové skupiny najaktívnejšie.
+5. **Najčastejšie hodnotené žánre:**
+   Preferencie používateľov podľa filmových žánrov.
 
-ETL proces pre MovieLens umožnil transformáciu zdrojových dát do robustného dátového modelu, ktorý podporuje analýzu správania používateľov a filmových preferencií. Výstupy môžu byť využité pre odporúčacie systémy, marketingové kampane a ďalšie analytické účely.
+6. **Aktivita podľa vekových skupín:**
+   Porovnanie časov hodnotenia jednotlivých vekových skupín.
+
+---
+## **5. Záver**
+
+ETL proces pre MovieLens dataset umožnil transformáciu zdrojových dát do robustného dátového modelu, ktorý podporuje analýzu správania používateľov a filmových preferencií.
+
+### **Možné aplikácie:**
+- Odporúcacie systémy 🔍.
+- Marketingové kampane 🌐.
+- Detailná analýza trendov 🌟.
+
+
+**Autor**: Martin Rosík
