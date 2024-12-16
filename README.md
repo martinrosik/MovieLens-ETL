@@ -68,14 +68,12 @@ FILE_FORMAT = (TYPE = 'CSV' SKIP_HEADER = 1);
 Chybné záznamy boli ignorované pomocou parametra `ON_ERROR = 'CONTINUE'`.
 
 ---
-3.2 Transformácia dát
+### **3.2 Transformácia dát**
 V tejto fáze boli dáta vyčistené, transformované a pripravené na použitie vo finálnom dátovom modeli.
 
-Dimenzia dim_users
-Obsahuje demografické údaje, pričom vek bol rozdelený do kategórií:
+Dimenzia `dim_users` obsahuje demografické údaje, pričom vek bol rozdelený do kategórií:
 
-sql
-Kopírovať kód
+```sql
 CREATE TABLE dim_users AS
 SELECT DISTINCT
     userId AS dim_userId,
@@ -90,11 +88,10 @@ SELECT DISTINCT
     gender,
     location
 FROM users_staging;
-Dimenzia dim_date
-Zabezpečuje podrobné časové údaje, ako sú dni v týždni či štvrťroky:
+```
+Dimenzia `dim_date` zabezpečuje podrobné časové údaje, ako sú dni v týždni či štvrťroky:
 
-sql
-Kopírovať kód
+```sql
 CREATE TABLE dim_date AS
 SELECT
     ROW_NUMBER() OVER (ORDER BY CAST(timestamp AS DATE)) AS dim_dateID,
@@ -105,11 +102,10 @@ SELECT
     DATE_PART(year, timestamp) AS year,
     DATE_PART(quarter, timestamp) AS quarter
 FROM ratings_staging;
-Faktová tabuľka fact_ratings
-Kombinuje kľúčové metriky:
+```
+Faktová tabuľka `fact_ratings` kombinuje kľúčové metriky:
 
-sql
-Kopírovať kód
+```sql
 CREATE TABLE fact_ratings AS
 SELECT 
     r.ratingId AS fact_ratingID,
@@ -122,15 +118,20 @@ FROM ratings_staging r
 JOIN dim_date d ON CAST(r.timestamp AS DATE) = d.date
 JOIN dim_movies m ON r.movieId = m.dim_movieId
 JOIN dim_users u ON r.userId = u.dim_userId;
-3.3 Načítanie dát
+```
+
+---
+### **3.3 Načítanie dát**
 Po úspešnom spracovaní boli staging tabuľky odstránené:
 
-sql
-Kopírovať kód
+```sql
 DROP TABLE IF EXISTS movies_staging;
 DROP TABLE IF EXISTS users_staging;
 DROP TABLE IF EXISTS ratings_staging;
-4. Vizualizácia dát
+```
+
+---
+## **4. Vizualizácia dát**
 Dashboard poskytuje prehľadné vizualizácie kľúčových metrík:
 
 Top 10 hodnotených filmov
