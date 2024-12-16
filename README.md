@@ -12,6 +12,7 @@ Zdrojové dáta pochádzajú z verejne dostupného datasetu MovieLens. Tento dat
 - `users`
 - `genres`
 - `tags`
+
 ETL proces bol navrhnutý tak, aby pripravil, transformoval a sprístupnil tieto dáta pre viacdimenzionálnu analýzu.
 
 ---
