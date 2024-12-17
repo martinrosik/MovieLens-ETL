@@ -145,35 +145,85 @@ DROP TABLE IF EXISTS ratings_staging;
 ---
 ## **4. Vizualizácia dát**
 
-Dashboard poskytuje prehľadné vizualizácie hlavných metrík 🔦:
+Dashboard obsahuje 6 vizualizácií, ktoré poskytujú základný prehľad o kľúčových metrikách a trendoch týkajúcich sa kníh, používateľov a hodnotení. Tieto vizualizácie odpovedajú na dôležité otázky a umožňujú lepšie pochopiť správanie používateľov a ich preferencie 🔦:
+
+<p align="center">
+  <img src="" alt="Data visualization">
+  <br>
+  <em>Obrázok 3: Dashboard MovieLens datasetu</em>
+</p>
 
 1. **Top 10 hodnotených filmov**:
    Vizualizácia najčastejšie hodnotených filmov:
    ```sql
    SELECT
-       m.title AS movie_title,
-       COUNT(f.fact_ratingID) AS total_ratings
-   FROM fact_ratings f
-   JOIN dim_movies m ON f.movieID = m.dim_movieId
-   GROUP BY m.title
-   ORDER BY total_ratings DESC
-   LIMIT 10;
+    m.title AS movie_title,
+    COUNT(f.fact_ratingID) AS total_ratings
+    FROM fact_ratings f
+    JOIN dim_movies m ON f.movieID = m.dim_movieId
+    GROUP BY m.title
+    ORDER BY total_ratings DESC
+    LIMIT 10;
    ```
 
 2. **Rozdelenie hodnotení podľa pohlavia:**
-   Porovnanie počtu hodnotení od mužov a žen.
+   Porovnanie počtu hodnotení od mužov a žien.
+   ```sql
+   SELECT
+    u.gender,
+    COUNT(f.fact_ratingID) AS total_ratings
+    FROM fact_ratings f
+    JOIN dim_users u ON f.userID = u.dim_userId
+    GROUP BY u.gender;
+   ```
 
 3. **Priemerné hodnotenia filmov podľa rokov vydania:**
    Odhalenie trendov v hodnoteniach filmov v rôznych obdobiach.
+   ```sql
+    SELECT
+    m.release_year,
+    ROUND(AVG(f.rating), 2) AS average_rating
+    FROM fact_ratings f
+    JOIN dim_movies m ON f.movieID = m.dim_movieId
+    GROUP BY m.release_year
+    ORDER BY m.release_year;
+   ```
 
 4. **Aktivita podľa dňí v týždni:**
    Zobrazenie najaktívnejších časov hodnotenia.
+   ```sql
+   SELECT
+    DAYNAME(f.rating_timestamp) AS day_of_week,
+    COUNT(f.fact_ratingID) AS total_ratings
+    FROM fact_ratings f
+    GROUP BY day_of_week
+    ORDER BY total_ratings DESC;
+   ```
 
 5. **Najčastejšie hodnotené žánre:**
    Preferencie používateľov podľa filmových žánrov.
+   ```sql
+   SELECT
+    g.genre,
+    COUNT(f.fact_ratingID) AS total_ratings
+    FROM fact_ratings f
+    JOIN dim_movies m ON f.movieID = m.dim_movieId
+    JOIN dim_genres g ON m.dim_movieId = g.movieID
+    GROUP BY g.genre
+    ORDER BY total_ratings DESC;
+   ```
 
 6. **Aktivita podľa vekových skupín:**
    Porovnanie časov hodnotenia jednotlivých vekových skupín.
+   ```sql
+   SELECT
+    u.age_group,
+    COUNT(f.fact_ratingID) AS total_ratings
+    FROM fact_ratings f
+    JOIN dim_users u ON f.userID = u.dim_userId
+    GROUP BY u.age_group
+    ORDER BY total_ratings DESC;
+   ```
 
 ---
 ## **5. Záver**
