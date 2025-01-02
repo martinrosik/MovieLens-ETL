@@ -80,7 +80,7 @@ Dáta boli vyčistené, transformované a pripravené na analyzáciu vo finálno
 
 #### Transformácie:
 1. **Dimenzia `dim_users`:**
-   Rozdelenie veku používateľov do kategórií:
+- Rozdelenie veku používateľov do kategórií:
    ```sql
    CREATE OR REPLACE TABLE dim_users AS
     SELECT DISTINCT 
@@ -104,7 +104,7 @@ Dáta boli vyčistené, transformované a pripravené na analyzáciu vo finálno
    ```
 
 2. **Dimenzia `dim_date`:**
-   Extrakcia detailných údajov o časových aspektoch:
+- Extrakcia detailných údajov o časových aspektoch:
    ```sql
    CREATE TABLE dim_date AS
     SELECT
@@ -124,7 +124,7 @@ Dáta boli vyčistené, transformované a pripravené na analyzáciu vo finálno
          DATE_PART(quarter, rated_at);
    ```
 3. **Dimenzia `dim_tags`:**
-   Pripravené údaje o značkách:
+- Pripravené údaje o značkách:
    ```sql
    CREATE TABLE dim_tags AS
     SELECT DISTINCT 
@@ -137,8 +137,8 @@ Dáta boli vyčistené, transformované a pripravené na analyzáciu vo finálno
     LEFT JOIN movies_staging ms ON t.movie_id = ms.movie_id;
     ```
 
-5. **Dimenzia `dim_movies`:**
-   Transformácia filmových údajov:
+4. **Dimenzia `dim_movies`:**
+- Transformácia filmových údajov:
    ```sql
    CREATE TABLE dim_movies AS
     SELECT DISTINCT
@@ -148,8 +148,8 @@ Dáta boli vyčistené, transformované a pripravené na analyzáciu vo finálno
     FROM movies_staging;
     ```
 
-7. **Dimenzia `dim_genres`:**
-   Pripravené údaje o žánroch:
+5. **Dimenzia `dim_genres`:**
+-Pripravené údaje o žánroch:
    ```sql
     CREATE TABLE dim_genres AS
     SELECT DISTINCT
@@ -158,8 +158,8 @@ Dáta boli vyčistené, transformované a pripravené na analyzáciu vo finálno
     FROM genres_staging;
    ```
 
-9. **Faktová tabuľka `fact_ratings`:**
-   Kombinácia hlavných metrík:
+6. **Faktová tabuľka `fact_ratings`:**
+- Kombinácia hlavných metrík:
    ```sql
    CREATE OR REPLACE TABLE fact_ratings AS
     SELECT DISTINCT
