@@ -64,15 +64,14 @@ Dáta boli nahrané z `CSV` súborov do Snowflake pomocou interného **stage** �
 
 #### Príklad kódu:
 ```sql
-CREATE OR REPLACE STAGE movielens_stage;
+CREATE OR REPLACE STAGE grizzly_stage;
 ```
 
 ```sql
-COPY INTO movies_staging
-FROM @movielens_stage/movies.csv
-FILE_FORMAT = (TYPE = 'CSV' SKIP_HEADER = 1);
+COPY INTO occupation_staging
+FROM @grizzly_stage/occupations.csv
+FILE_FORMAT = (TYPE = 'CSV' FIELD_OPTIONALLY_ENCLOSED_BY = '"' SKIP_HEADER = 1);
 ```
-Chybné záznamy boli ignorované pomocou parametra `ON_ERROR = 'CONTINUE'`. 🚫
 
 ---
 ### **3.2 Transformácia dát**
@@ -83,52 +82,102 @@ Dáta boli vyčistené, transformované a pripravené na analyzáciu vo finálno
 1. **Dimenzia `dim_users`:**
    Rozdelenie veku používateľov do kategórií:
    ```sql
-   CREATE TABLE dim_users AS
-   SELECT DISTINCT
-       userId AS dim_userId,
-       CASE
-           WHEN age < 18 THEN 'Under 18'
-           WHEN age BETWEEN 18 AND 24 THEN '18-24'
-           WHEN age BETWEEN 25 AND 34 THEN '25-34'
-           WHEN age BETWEEN 35 AND 44 THEN '35-44'
-           WHEN age >= 45 THEN '45+'
-           ELSE 'Unknown'
-       END AS age_group,
-       gender,
-       location
-   FROM users_staging;
+   CREATE OR REPLACE TABLE dim_users AS
+    SELECT DISTINCT 
+      us.user_id,
+      os.name AS occupation,
+      us.gender,
+      us.age,
+      ag.name AS age_group
+    FROM users_staging us
+    LEFT JOIN occupation_staging os ON us.occupation_id = us.occupation_id
+    LEFT JOIN age_group_staging ag
+    ON (
+        (ag.name = 'Under 18' AND us.age < 18) OR
+        (ag.name = '18-24' AND us.age BETWEEN 18 AND 24) OR
+        (ag.name = '25-34' AND us.age BETWEEN 25 AND 34) OR
+        (ag.name = '35-44' AND us.age BETWEEN 35 AND 44) OR
+        (ag.name = '45-49' AND us.age BETWEEN 45 AND 49) OR
+        (ag.name = '50-55' AND us.age BETWEEN 50 AND 55) OR
+        (ag.name = '56+' AND us.age >= 56))
+    ORDER BY us.user_id;
    ```
 
 2. **Dimenzia `dim_date`:**
    Extrakcia detailných údajov o časových aspektoch:
    ```sql
    CREATE TABLE dim_date AS
-   SELECT
-       ROW_NUMBER() OVER (ORDER BY CAST(timestamp AS DATE)) AS dim_dateID,
-       CAST(timestamp AS DATE) AS date,
-       DATE_PART(day, timestamp) AS day,
-       DATE_PART(dow, timestamp) AS dayOfWeek,
-       DATE_PART(month, timestamp) AS month,
-       DATE_PART(year, timestamp) AS year,
-       DATE_PART(quarter, timestamp) AS quarter
-   FROM ratings_staging;
+    SELECT
+      ROW_NUMBER() OVER (ORDER BY CAST(rated_at AS DATE)) AS iddim_date, 
+      rated_at,
+      DATE_PART(day, rated_at) AS day, 
+      DATE_PART(week, rated_at) AS week,
+      DATE_PART(month, rated_at) AS month,              
+      DATE_PART(year, rated_at) AS year,                               
+      DATE_PART(quarter, rated_at) AS quartal        
+    FROM ratings_staging
+    GROUP BY rated_at,
+         DATE_PART(day, rated_at),
+         DATE_PART(week, rated_at),
+         DATE_PART(month, rated_at), 
+         DATE_PART(year, rated_at),  
+         DATE_PART(quarter, rated_at);
+   ```
+3. **Dimenzia `dim_tags`:**
+   Pripravené údaje o značkách:
+   ```sql
+   CREATE TABLE dim_tags AS
+    SELECT DISTINCT 
+      t.tag_id,
+      us.user_id,
+      ms.movie_id,
+      t.tags AS tag_name
+    FROM tags_staging t
+    LEFT JOIN users_staging us ON t.user_id = us.user_id
+    LEFT JOIN movies_staging ms ON t.movie_id = ms.movie_id;
+    ```
+
+5. **Dimenzia `dim_movies`:**
+   Transformácia filmových údajov:
+   ```sql
+   CREATE TABLE dim_movies AS
+    SELECT DISTINCT
+      movie_id,
+      title,
+      release_year
+    FROM movies_staging;
+    ```
+
+7. **Dimenzia `dim_genres`:**
+   Pripravené údaje o žánroch:
+   ```sql
+    CREATE TABLE dim_genres AS
+    SELECT DISTINCT
+      genre_id,
+      name AS genre_name
+    FROM genres_staging;
    ```
 
-3. **Faktová tabuľka `fact_ratings`:**
+9. **Faktová tabuľka `fact_ratings`:**
    Kombinácia hlavných metrík:
    ```sql
-   CREATE TABLE fact_ratings AS
-   SELECT
-       r.ratingId AS fact_ratingID,
-       r.timestamp AS timestamp,
-       r.rating,
-       d.dim_dateID AS dateID,
-       m.dim_movieId AS movieID,
-       u.dim_userId AS userID
-   FROM ratings_staging r
-   JOIN dim_date d ON CAST(r.timestamp AS DATE) = d.date
-   JOIN dim_movies m ON r.movieId = m.dim_movieId
-   JOIN dim_users u ON r.userId = u.dim_userId;
+   CREATE OR REPLACE TABLE fact_ratings AS
+    SELECT DISTINCT
+      rs.rating_id AS rating_id,        
+      rs.rated_at AS rated_at,   
+      rs.rating,                          
+      dm.movie_id AS movie_id,
+      dt.tag_id AS tag_id,
+      dd.iddim_date AS date_id,
+      du.user_id AS user_id,
+      dg.genre_id AS genre_id
+    FROM ratings_staging rs
+    LEFT JOIN dim_date dd ON rs.rated_at = dd.rated_at
+    LEFT JOIN dim_movies dm ON rs.movie_id = dm.movie_id         
+    LEFT JOIN dim_users du ON rs.user_id = du.user_id
+    LEFT JOIN dim_tags dt ON rs.movie_id = dt.movie_id
+    LEFT JOIN genres_movies_staging gms ON rs.movie_id = gms.movie_id
+    LEFT JOIN dim_genres dg ON gms.genre_id = dg.genre_id;
    ```
 
 ---
@@ -137,8 +186,13 @@ Dáta boli vyčistené, transformované a pripravené na analyzáciu vo finálno
 Po úspešnom spracovaní boli staging tabuľky odstránené pre optimalizáciu:
 
 ```sql
-DROP TABLE IF EXISTS movies_staging;
+DROP TABLE IF EXISTS age_group_staging;
+DROP TABLE IF EXISTS occupation_staging;
 DROP TABLE IF EXISTS users_staging;
+DROP TABLE IF EXISTS movies_staging;
+DROP TABLE IF EXISTS tags_staging;
+DROP TABLE IF EXISTS genres_staging;
+DROP TABLE IF EXISTS genres_movies_staging;
 DROP TABLE IF EXISTS ratings_staging;
 ```
 
