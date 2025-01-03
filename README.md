@@ -163,7 +163,7 @@ Dáta boli vyčistené, transformované a pripravené na analyzáciu vo finálno
     FROM genres_staging;
    ```
 
-7. **Faktová tabuľka `fact_ratings`:**
+6. **Faktová tabuľka `fact_ratings`:**
 - Kombinácia hlavných metrík:
   
    ```sql
