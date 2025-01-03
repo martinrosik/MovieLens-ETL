@@ -208,7 +208,7 @@ DROP TABLE IF EXISTS ratings_staging;
 Dashboard obsahuje 6 vizualizácií, ktoré poskytujú základný prehľad o kľúčových metrikách a trendoch týkajúcich sa filmov, používateľov a hodnotení. Tieto vizualizácie odpovedajú na dôležité otázky a umožňujú lepšie pochopiť správanie používateľov a ich preferencie 🔦:
 
 <p align="center">
-  <img src="" alt="Data visualization">
+  <img src="https://github.com/martinrosik/MovieLens-ETL/blob/master/movie_lens_dashboard_visualization.png" alt="Data visualization">
   <br>
   <em>Obrázok 3: Dashboard MovieLens datasetu</em>
 </p>
