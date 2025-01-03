@@ -81,6 +81,7 @@ Dáta boli vyčistené, transformované a pripravené na analyzáciu vo finálno
 #### Transformácie:
 1. **Dimenzia `dim_users`:**
 - Rozdelenie veku používateľov do kategórií:
+  
    ```sql
    CREATE OR REPLACE TABLE dim_users AS
     SELECT DISTINCT 
@@ -105,6 +106,7 @@ Dáta boli vyčistené, transformované a pripravené na analyzáciu vo finálno
 
 2. **Dimenzia `dim_date`:**
 - Extrakcia detailných údajov o časových aspektoch:
+  
    ```sql
    CREATE TABLE dim_date AS
     SELECT
@@ -125,6 +127,7 @@ Dáta boli vyčistené, transformované a pripravené na analyzáciu vo finálno
    ```
 3. **Dimenzia `dim_tags`:**
 - Pripravené údaje o značkách:
+  
    ```sql
    CREATE TABLE dim_tags AS
     SELECT DISTINCT 
@@ -139,6 +142,7 @@ Dáta boli vyčistené, transformované a pripravené na analyzáciu vo finálno
 
 4. **Dimenzia `dim_movies`:**
 - Transformácia filmových údajov:
+  
    ```sql
    CREATE TABLE dim_movies AS
     SELECT DISTINCT
@@ -149,7 +153,8 @@ Dáta boli vyčistené, transformované a pripravené na analyzáciu vo finálno
     ```
 
 5. **Dimenzia `dim_genres`:**
--Pripravené údaje o žánroch:
+- Pripravené údaje o žánroch:
+
    ```sql
     CREATE TABLE dim_genres AS
     SELECT DISTINCT
@@ -158,8 +163,9 @@ Dáta boli vyčistené, transformované a pripravené na analyzáciu vo finálno
     FROM genres_staging;
    ```
 
-6. **Faktová tabuľka `fact_ratings`:**
+7. **Faktová tabuľka `fact_ratings`:**
 - Kombinácia hlavných metrík:
+  
    ```sql
    CREATE OR REPLACE TABLE fact_ratings AS
     SELECT DISTINCT
@@ -207,76 +213,94 @@ Dashboard obsahuje 6 vizualizácií, ktoré poskytujú základný prehľad o kľ
   <em>Obrázok 3: Dashboard MovieLens datasetu</em>
 </p>
 
-1. **Top 10 hodnotených filmov**:
-   Vizualizácia najčastejšie hodnotených filmov:
+1. **Vývoj Obľúbenosti Žánrov v Čase**:
+- Počet hodnotení filmov podľa žánrov a rokov, zobrazujúci vývoj trendov:
+  
    ```sql
-   SELECT
-    m.title AS movie_title,
-    COUNT(f.fact_ratingID) AS total_ratings
-    FROM fact_ratings f
-    JOIN dim_movies m ON f.movieID = m.dim_movieId
-    GROUP BY m.title
+   SELECT 
+      dg.genre_name, 
+      dd.year, 
+      COUNT(fr.rating) AS total_ratings
+    FROM fact_ratings fr
+    JOIN dim_genres dg ON fr.genre_id = dg.genre_id
+    JOIN dim_date dd ON fr.date_id = dd.iddim_date
+    GROUP BY dg.genre_name, dd.year
+    ORDER BY dd.year, total_ratings DESC;
+   ```
+
+2. **Analýza Tagov Podľa Žánru**:
+- Najčastejšie používané tagy v rámci rôznych filmových žánrov:
+  
+   ```sql
+   SELECT 
+      dg.genre_name, 
+      dt.tag_name, 
+      COUNT(*) AS total_tags
+    FROM dim_tags dt
+    JOIN fact_ratings fr ON dt.tag_id = fr.tag_id
+    JOIN dim_genres dg ON fr.genre_id = dg.genre_id
+    GROUP BY dg.genre_name, dt.tag_name
+    HAVING COUNT(*) > 5
+    ORDER BY dg.genre_name, total_tags DESC;
+   ```
+
+3. **Porovnanie pohlavia a obľúbenosť žánrov**:
+- Preferencie mužov a žien v hodnotení filmových žánrov:
+  
+   ```sql
+   SELECT 
+      du.gender, 
+      dg.genre_name, 
+      COUNT(fr.rating) AS total_ratings
+    FROM fact_ratings fr
+    JOIN dim_users du ON fr.user_id = du.user_id
+    JOIN dim_genres dg ON fr.genre_id = dg.genre_id
+    GROUP BY du.gender, dg.genre_name
+    ORDER BY du.gender, total_ratings DESC;
+   ```
+
+4. **Hodnotenia podľa Dňa v Týždni**:
+- Aktivita hodnotenia filmov v jednotlivé dni týždňa:
+  
+   ```sql
+   SELECT 
+      DATE_PART('WEEKDAY', dd.rated_at) AS weekday, 
+      COUNT(fr.rating) AS total_ratings
+    FROM fact_ratings fr
+    JOIN dim_date dd ON fr.date_id = dd.iddim_date
+    GROUP BY DATE_PART('WEEKDAY', dd.rated_at)
+    ORDER BY weekday;
+   ```
+
+5. **Top 5 Používateľov s Najvyšším Počtom Hodnotení**:
+- Používatelia s najväčším počtom hodnotení a ich demografické charakteristiky:
+  
+   ```sql
+   SELECT 
+      du.user_id, 
+      du.age_group, 
+      du.gender, 
+      COUNT(fr.rating) AS total_ratings
+    FROM fact_ratings fr
+    JOIN dim_users du ON fr.user_id = du.user_id
+    GROUP BY du.user_id, du.age_group, du.gender
     ORDER BY total_ratings DESC
-    LIMIT 10;
+    LIMIT 5;
    ```
 
-2. **Rozdelenie hodnotení podľa pohlavia:**
-   Porovnanie počtu hodnotení od mužov a žien.
+6. **Predikcia Obľúbenosti Žánrov**:
+- Sezónne trendy obľúbenosti filmových žánrov podľa mesiacov:
+  
    ```sql
-   SELECT
-    u.gender,
-    COUNT(f.fact_ratingID) AS total_ratings
-    FROM fact_ratings f
-    JOIN dim_users u ON f.userID = u.dim_userId
-    GROUP BY u.gender;
-   ```
-
-3. **Priemerné hodnotenia filmov podľa rokov vydania:**
-   Odhalenie trendov v hodnoteniach filmov v rôznych obdobiach.
-   ```sql
-    SELECT
-    m.release_year,
-    ROUND(AVG(f.rating), 2) AS average_rating
-    FROM fact_ratings f
-    JOIN dim_movies m ON f.movieID = m.dim_movieId
-    GROUP BY m.release_year
-    ORDER BY m.release_year;
-   ```
-
-4. **Aktivita podľa dňí v týždni:**
-   Zobrazenie najaktívnejších časov hodnotenia.
-   ```sql
-   SELECT
-    DAYNAME(f.rating_timestamp) AS day_of_week,
-    COUNT(f.fact_ratingID) AS total_ratings
-    FROM fact_ratings f
-    GROUP BY day_of_week
-    ORDER BY total_ratings DESC;
-   ```
-
-5. **Najčastejšie hodnotené žánre:**
-   Preferencie používateľov podľa filmových žánrov.
-   ```sql
-   SELECT
-    g.genre,
-    COUNT(f.fact_ratingID) AS total_ratings
-    FROM fact_ratings f
-    JOIN dim_movies m ON f.movieID = m.dim_movieId
-    JOIN dim_genres g ON m.dim_movieId = g.movieID
-    GROUP BY g.genre
-    ORDER BY total_ratings DESC;
-   ```
-
-6. **Aktivita podľa vekových skupín:**
-   Porovnanie časov hodnotenia jednotlivých vekových skupín.
-   ```sql
-   SELECT
-    u.age_group,
-    COUNT(f.fact_ratingID) AS total_ratings
-    FROM fact_ratings f
-    JOIN dim_users u ON f.userID = u.dim_userId
-    GROUP BY u.age_group
-    ORDER BY total_ratings DESC;
+   SELECT 
+      dg.genre_name, 
+      DATE_PART('MONTH', dd.rated_at) AS month, 
+      COUNT(fr.rating) AS total_ratings
+    FROM fact_ratings fr
+    JOIN dim_genres dg ON fr.genre_id = dg.genre_id
+    JOIN dim_date dd ON fr.date_id = dd.iddim_date
+    GROUP BY dg.genre_name, DATE_PART('MONTH', dd.rated_at)
+    ORDER BY dg.genre_name, month;
    ```
 
 ---
